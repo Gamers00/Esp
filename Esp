@@ -1,0 +1,117 @@
+-- Cria uma função para verificar se um objeto é uma parte válida
+local function isPart(obj)
+    return obj:IsA("Part") or obj:IsA("MeshPart")
+end
+
+-- Cria uma função para criar o ESP em uma parte
+local function createESP(part)
+    -- Define as cores para os times aliado e inimigo
+    local allyColor = Color3.fromRGB(0, 255, 255)
+    local enemyColor = Color3.fromRGB(255, 0, 0)
+
+    -- Cria um BoxHandleAdornment para cada face da parte
+    for _, face in pairs(Enum.NormalId:GetEnumItems()) do
+        local adornment = Instance.new("BoxHandleAdornment")
+        adornment.Name = "ESP"
+        adornment.Parent = part
+        adornment.Adornee = part
+        adornment.AlwaysOnTop = true
+        adornment.ZIndex = 10
+        adornment.Size = part.Size
+        adornment.Transparency = 0.5
+        adornment.Visible = true
+        adornment.Face = face
+
+        -- Verifica o time do jogador dono da parte
+        local player = game.Players:GetPlayerFromCharacter(part.Parent)
+        if player then
+            if player.Team == game.Players.LocalPlayer.Team then
+                -- Se for aliado, usa a cor aliada
+                adornment.Color3 = allyColor
+            else
+                -- Se for inimigo, usa a cor inimiga
+                adornment.Color3 = enemyColor
+            end
+        else
+            -- Se não for um jogador, usa a cor branca
+            adornment.Color3 = Color3.new(1, 1, 1)
+        end
+    end
+end
+
+-- Cria uma função para remover o ESP de uma parte
+local function removeESP(part)
+    -- Procura por adornments com o nome "ESP" na parte e os remove
+    for _, child in pairs(part:GetChildren()) do
+        if child.Name == "ESP" and child:IsA("BoxHandleAdornment") then
+            child:Destroy()
+        end
+    end
+end
+
+-- Cria uma função para atualizar o ESP de todos os jogadores
+local function updateESP()
+    -- Percorre todos os jogadores no jogo
+    for _, player in pairs(game.Players:GetPlayers()) do
+        -- Verifica se o jogador tem um personagem e uma parte chamada "Head"
+        if player.Character and player.Character:FindFirstChild("Head") then
+            -- Cria o ESP na cabeça do jogador
+            createESP(player.Character.Head)
+        end
+    end
+end
+
+-- Cria uma variável para armazenar o estado do ESP (ligado ou desligado)
+local espEnabled = false
+
+-- Cria uma função para ligar ou desligar o ESP
+local function toggleESP()
+    -- Inverte o valor da variável
+    espEnabled = not espEnabled
+
+    -- Verifica o novo valor da variável
+    if espEnabled then
+        -- Se for verdadeiro, atualiza o ESP de todos os jogadores
+        updateESP()
+    else
+        -- Se for falso, remove o ESP de todas as partes do jogo
+        for _, part in pairs(workspace:GetDescendants()) do
+            if isPart(part) then
+                removeESP(part)
+            end
+        end
+    end
+end
+
+-- Cria um evento para detectar quando o jogador aperta a tecla E
+game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.E and not gameProcessed then
+        -- Se a tecla E foi pressionada e não foi processada pelo jogo, chama a função toggleESP
+        toggleESP()
+    end
+end)
+
+-- Cria um evento para detectar quando um novo jogador entra no jogo
+game.Players.PlayerAdded:Connect(function(player)
+    -- Se o ESP estiver ligado, cria o ESP no personagem do novo jogador
+    if espEnabled and player.Character and player.Character:FindFirstChild("Head") then
+        createESP(player.Character.Head)
+    end
+end)
+
+-- Cria um evento para detectar quando um jogador sai do jogo
+game.Players.PlayerRemoving:Connect(function(player)
+    -- Se o ESP estiver ligado, remove o ESP do personagem do jogador que saiu
+    if espEnabled and player.Character and player.Character:FindFirstChild("Head") then
+        removeESP(player.Character.Head)
+    end
+end)
+
+-- Cria um evento para detectar quando um jogador muda de time
+game.Players.PlayerTeamChange:Connect(function(player)
+    -- Se o ESP estiver ligado, atualiza o ESP do personagem do jogador que mudou de time
+    if espEnabled and player.Character and player.Character:FindFirstChild("Head") then
+        removeESP(player.Character.Head)
+        createESP(player.Character.Head)
+    end
+end)
